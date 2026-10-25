@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   refresh:
-    runs-on: macos-latest
+    runs-on: windows-latest
     timeout-minutes: 6
     steps:
       - name: Checkout
@@ -51,5 +51,6 @@ jobs:
           git add its-addresses.json health.json buckets
           git commit -m "data: refresh official ITS addresses"
           git push --force origin HEAD:data
+
 
 
