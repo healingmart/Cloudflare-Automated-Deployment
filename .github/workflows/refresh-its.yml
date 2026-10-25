@@ -1,11 +1,6 @@
 ﻿name: Refresh official ITS address source
 
-on:
-  schedule:
-    - cron: "17,47 * * * *"
-  workflow_dispatch:
-  push:
-    branches: [main]
+on:`n  workflow_dispatch:
 
 permissions:
   contents: write
@@ -56,4 +51,5 @@ jobs:
           git add its-addresses.json health.json buckets
           git commit -m "data: refresh official ITS addresses"
           git push --force origin HEAD:data
+
 
