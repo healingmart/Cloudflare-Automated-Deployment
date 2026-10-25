@@ -1,4 +1,4 @@
-name: Refresh official ITS address source
+﻿name: Refresh official ITS address source
 
 on:
   schedule:
@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   refresh:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     timeout-minutes: 6
     steps:
       - name: Checkout
@@ -56,3 +56,4 @@ jobs:
           git add its-addresses.json health.json buckets
           git commit -m "data: refresh official ITS addresses"
           git push --force origin HEAD:data
+
