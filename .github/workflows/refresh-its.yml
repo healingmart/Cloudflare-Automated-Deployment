@@ -1,6 +1,11 @@
-﻿name: Refresh official ITS address source
+name: Refresh official ITS address source
 
-on:`n  workflow_dispatch:
+on:
+  schedule:
+    - cron: "17,47 * * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
 
 permissions:
   contents: write
@@ -12,7 +17,7 @@ concurrency:
 jobs:
   refresh:
     runs-on: windows-latest
-    timeout-minutes: 6
+    timeout-minutes: 8
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,15 +31,13 @@ jobs:
         run: node scripts/refresh-its.mjs
 
       - name: Validate output
+        shell: pwsh
         run: |
-          node --input-type=module - <<'NODE'
-          import fs from 'node:fs';
-          const j=JSON.parse(fs.readFileSync('out/its-addresses.json','utf8'));
-          const count=Object.keys(j.entries||{}).length;
-          const age=Date.now()-Number(j.at||0);
-          if(count<10000||count>15000||age<0||age>10*60*1000) throw Error('ITS_OUTPUT_INVALID');
-          console.log({count,at:new Date(j.at).toISOString()});
-          NODE
+          $j = Get-Content 'out/its-addresses.json' -Raw | ConvertFrom-Json
+          $count = $j.entries.PSObject.Properties.Count
+          $age = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() - [int64]$j.at
+          if ($count -lt 10000 -or $count -gt 15000 -or $age -lt 0 -or $age -gt 600000) { throw "ITS_OUTPUT_INVALID count=$count age=$age" }
+          Write-Output "count=$count at=$($j.at)"
 
       - name: Publish latest-only data branch
         shell: bash
@@ -51,6 +54,3 @@ jobs:
           git add its-addresses.json health.json buckets
           git commit -m "data: refresh official ITS addresses"
           git push --force origin HEAD:data
-
-
-
