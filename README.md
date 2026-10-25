@@ -1,0 +1,1 @@
+# HealingMart ITS Public Refresh\n\nAutomated refresh of public official ITS CCTV address metadata. No secrets are stored in this repository.\n

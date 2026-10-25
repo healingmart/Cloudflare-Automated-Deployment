@@ -1,0 +1,58 @@
+name: Refresh official ITS address source
+
+on:
+  schedule:
+    - cron: "17,47 * * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: official-its-address-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Refresh official ITS address metadata
+        run: node scripts/refresh-its.mjs
+
+      - name: Validate output
+        run: |
+          node --input-type=module - <<'NODE'
+          import fs from 'node:fs';
+          const j=JSON.parse(fs.readFileSync('out/its-addresses.json','utf8'));
+          const count=Object.keys(j.entries||{}).length;
+          const age=Date.now()-Number(j.at||0);
+          if(count<10000||count>15000||age<0||age>10*60*1000) throw Error('ITS_OUTPUT_INVALID');
+          console.log({count,at:new Date(j.at).toISOString()});
+          NODE
+
+      - name: Publish latest-only data branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          cp -R out/. "$tmp/"
+          git config user.name "HealingMart ITS Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git checkout --orphan data
+          git rm -rf . >/dev/null 2>&1 || true
+          find . -mindepth 1 -maxdepth 1 -not -name .git -exec rm -rf {} +
+          cp -R "$tmp"/. .
+          git add its-addresses.json health.json buckets
+          git commit -m "data: refresh official ITS addresses"
+          git push --force origin HEAD:data
