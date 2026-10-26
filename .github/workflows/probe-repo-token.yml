@@ -1,0 +1,26 @@
+name: Probe private repo checkout credential
+on:
+  pull_request:
+    branches: [main]
+    paths: [".repo-token-probe"]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    env:
+      A: ${{ secrets.GH_PAT }}
+      B: ${{ secrets.GITHUB_PAT }}
+      C: ${{ secrets.PRIVATE_REPO_TOKEN }}
+      D: ${{ secrets.REPO_TOKEN }}
+      E: ${{ secrets.GH_TOKEN }}
+      F: ${{ secrets.DEPLOY_TOKEN }}
+    steps:
+      - name: Report presence only
+        shell: bash
+        run: |
+          for n in A B C D E F; do
+            v="${!n:-}"
+            [ -n "$v" ] && echo "$n=1" || echo "$n=0"
+          done
