@@ -1,0 +1,48 @@
+name: Inspect current Worker package
+on:
+  pull_request:
+    branches: [main]
+    paths: [".worker-package-probe"]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      SCRIPT: healingmart-korea-live-cloudflare
+    steps:
+      - name: Inspect metadata without exposing source or secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          API="https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT/workers/scripts/$SCRIPT"
+          curl -fsS -D /tmp/h -H "Authorization: Bearer $CF_TOKEN" "$API/content/v2" -o /tmp/content
+          echo "CONTENT_SIZE=$(wc -c </tmp/content)"
+          grep -i '^content-type:' /tmp/h || true
+          python - <<'PY'
+          import email, pathlib, re
+          h=pathlib.Path('/tmp/h').read_text(errors='ignore')
+          ct=re.search(r'(?im)^content-type:\s*(.+)$',h)
+          raw=pathlib.Path('/tmp/content').read_bytes()
+          if ct and 'multipart/' in ct.group(1):
+              msg=email.message_from_bytes(('Content-Type: '+ct.group(1)+'\nMIME-Version: 1.0\n\n').encode()+raw)
+              print('PARTS',[(p.get_param('name',header='content-disposition'),p.get_content_type(),len(p.get_payload(decode=True) or b'')) for p in msg.walk() if not p.is_multipart()])
+          else:
+              print('SINGLE_CONTENT',ct.group(1).strip() if ct else 'unknown',len(raw))
+          PY
+          curl -fsS -H "Authorization: Bearer $CF_TOKEN" "$API/settings" -o /tmp/settings.json
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/settings.json')).get('result') or {}
+          print(json.dumps({
+            'main_module':d.get('main_module'),
+            'compatibility_date':d.get('compatibility_date'),
+            'compatibility_flags':d.get('compatibility_flags'),
+            'bindings':[{'name':x.get('name'),'type':x.get('type')} for x in d.get('bindings',[])],
+            'assets':d.get('assets'),
+            'limits':d.get('limits'),
+          },ensure_ascii=False))
+          PY
