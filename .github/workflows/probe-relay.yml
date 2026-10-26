@@ -1,0 +1,21 @@
+name: Probe ITS relay public access
+on:
+  pull_request:
+    branches: [main]
+    paths: [".relay-probe-trigger"]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Curl public relay alias
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://healingmart-its-relay-healingks-projects-2c356fa6.vercel.app/api/probe"
+          code="$(curl -sS -L --max-time 25 -o /tmp/body -w '%{http_code}' "$URL" || true)"
+          echo "HTTP=$code"
+          cat /tmp/body 2>/dev/null || true
+          test "$code" = "200" || exit 1
