@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   refresh:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
       - name: Checkout
@@ -31,13 +31,17 @@ jobs:
         run: node scripts/refresh-its.mjs
 
       - name: Validate output
-        shell: pwsh
+        shell: bash
         run: |
-          $j = Get-Content 'out/its-addresses.json' -Raw | ConvertFrom-Json
-          $count = $j.entries.PSObject.Properties.Count
-          $age = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() - [int64]$j.at
-          if ($count -lt 10000 -or $count -gt 15000 -or $age -lt 0 -or $age -gt 600000) { throw "ITS_OUTPUT_INVALID count=$count age=$age" }
-          Write-Output "count=$count at=$($j.at)"
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('out/its-addresses.json','utf8'));
+          const count=Object.keys(j.entries||{}).length;
+          const age=Date.now()-Number(j.at);
+          if(count<10000||count>15000||age<0||age>600000) throw new Error('ITS_OUTPUT_INVALID count='+count+' age='+age);
+          console.log(JSON.stringify({count,at:new Date(Number(j.at)).toISOString()}));
+          NODE
 
       - name: Publish latest-only data branch
         shell: bash
