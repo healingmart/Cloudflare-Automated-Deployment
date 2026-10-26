@@ -1,0 +1,20 @@
+name: Probe deployment credentials
+on:
+  pull_request:
+    branches: [main]
+    paths: [".deploy-credential-probe"]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Report presence only
+        shell: bash
+        run: |
+          [ -n "${CF_TOKEN:-}" ] && echo "CF_TOKEN_PRESENT=1" || echo "CF_TOKEN_PRESENT=0"
+          [ -n "${CF_ACCOUNT:-}" ] && echo "CF_ACCOUNT_PRESENT=1" || echo "CF_ACCOUNT_PRESENT=0"
