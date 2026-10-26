@@ -1,0 +1,29 @@
+name: Probe production ITS gateway
+on:
+  pull_request:
+    branches: [main]
+    paths: [".prod-its-probe-trigger"]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Probe production ITS gateway
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://healingmart-korea-live-cloudflare.eternityland34.workers.dev"
+          echo "=== DEBUG ==="
+          curl -fsS --max-time 40 "$BASE/api/its/debug" | tee /tmp/debug.json
+          echo
+          echo "=== VIEWPORT ==="
+          curl -fsS --max-time 40 "$BASE/api/its/viewport?minX=126.7&maxX=127.3&minY=37.3&maxY=37.8&limit=500&_=$(date +%s)" | tee /tmp/view.json
+          echo
+          node - <<'NODE'
+          const fs=require('fs');
+          const d=JSON.parse(fs.readFileSync('/tmp/debug.json','utf8'));
+          const v=JSON.parse(fs.readFileSync('/tmp/view.json','utf8'));
+          console.log(JSON.stringify({debug:{key:d.key,count:d.count,targets:d.targets,waves:d.waves,failures:d.failures,durationMs:d.durationMs},viewport:{count:(v.items||[]).length,meta:v.meta,sample:(v.items||[]).slice(0,3)}}));
+          NODE
